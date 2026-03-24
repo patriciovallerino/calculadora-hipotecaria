@@ -342,7 +342,8 @@
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script>
     let tcBNA = null;
 
@@ -469,23 +470,215 @@
     }
 
     function downloadPDF() {
-      // Show amort table for PDF
-      const amortW = document.getElementById('amort-wrapper');
-      const wasHidden = amortW.style.display === 'none';
-      amortW.style.display = 'block';
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const W = 210, H = 297;
+      const ml = 20, mr = 20, contentW = W - ml - mr;
+      let y = 20;
 
-      const el = document.getElementById('results');
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: 'simulacion-hipotecaria.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-      html2pdf().set(opt).from(el).save().then(() => {
-        if (wasHidden) amortW.style.display = 'none';
+      // Colors
+      const navy = [10, 61, 98];
+      const lightBlue = [232, 244, 253];
+      const gray = [136, 136, 136];
+      const darkText = [26, 26, 46];
+      const white = [255, 255, 255];
+
+      // Helper: draw rounded rect
+      function roundRect(x, yy, w, h, r, fill, stroke) {
+        doc.setFillColor(...fill);
+        doc.roundedRect(x, yy, w, h, r, r, stroke ? 'FD' : 'F');
+      }
+
+      // --- HEADER ---
+      roundRect(0, 0, W, 42, 0, navy);
+      doc.setTextColor(...white);
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Simulación de Crédito Hipotecario', ml, 18);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }), ml, 26);
+      doc.setFontSize(9);
+      doc.text(`TC BNA Vendedor: $ ${fmtD(tcBNA)}`, ml, 33);
+      y = 52;
+
+      // --- DATOS DEL CRÉDITO ---
+      doc.setTextColor(...navy);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Datos del crédito', ml, y);
+      y += 8;
+
+      const propUSD = parseFormatted(document.getElementById('propertyUSD').value);
+      const ltvPct = parseFloat(document.getElementById('ltvPct').value);
+      const salary = parseFormatted(document.getElementById('salary').value);
+      const tna = parseFloat(document.getElementById('tna').value);
+      const years = parseInt(document.getElementById('years').value);
+      const maxRatio = parseFloat(document.getElementById('maxRatio').value);
+
+      const datos = [
+        ['Valor de la propiedad', `U$S ${fmt(propUSD)}`, `$ ${fmt(propUSD * tcBNA)}`],
+        ['Financiación solicitada', `${ltvPct}%`, ''],
+        ['Sueldo neto mensual', `$ ${fmt(salary)}`, ''],
+        ['Tasa nominal anual (TNA)', `${fmtD(tna, 1)}%`, ''],
+        ['Plazo', `${years} años (${years * 12} cuotas)`, ''],
+        ['Tope cuota/ingreso', `${fmtD(maxRatio, 0)}%`, ''],
+      ];
+
+      doc.autoTable({
+        startY: y,
+        head: [['Concepto', 'Valor', 'Equivalente']],
+        body: datos,
+        theme: 'striped',
+        margin: { left: ml, right: mr },
+        headStyles: { fillColor: navy, textColor: white, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9, textColor: darkText },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 }, 1: { halign: 'right' }, 2: { halign: 'right', textColor: gray } },
       });
+      y = doc.lastAutoTable.finalY + 12;
+
+      // --- RESULTADO PRINCIPAL ---
+      const cuotaText = document.getElementById('r-cuota').textContent;
+      const cuotaSub = document.getElementById('r-cuota-sub').textContent;
+
+      roundRect(ml, y, contentW, 28, 4, navy);
+      doc.setTextColor(...white);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Cuota mensual estimada (sistema francés)', ml + 8, y + 8);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text(cuotaText, ml + 8, y + 19);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(176, 212, 241);
+      doc.text(cuotaSub, ml + 8, y + 25);
+      y += 36;
+
+      // --- RESUMEN ---
+      doc.setTextColor(...navy);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumen', ml, y);
+      y += 8;
+
+      const creditoARS = document.getElementById('r-credito').textContent;
+      const creditoUSD = document.getElementById('r-credito-usd').textContent;
+      const anticipoARS = document.getElementById('r-anticipo').textContent;
+      const anticipoUSD = document.getElementById('r-anticipo-usd').textContent;
+      const ratioText = document.getElementById('r-ratio').textContent;
+      const totalText = document.getElementById('r-total').textContent;
+      const interesesText = document.getElementById('r-intereses').textContent;
+
+      const resumen = [
+        ['Monto del crédito', creditoARS, creditoUSD],
+        ['Anticipo necesario', anticipoARS, anticipoUSD],
+        ['Relación cuota/ingreso', ratioText, 'Máx recomendado: 25-30%'],
+        ['Total a pagar', totalText, interesesText],
+      ];
+
+      doc.autoTable({
+        startY: y,
+        head: [['Concepto', 'Valor', 'Detalle']],
+        body: resumen,
+        theme: 'striped',
+        margin: { left: ml, right: mr },
+        headStyles: { fillColor: navy, textColor: white, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9, textColor: darkText },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { halign: 'right' }, 2: { halign: 'right', textColor: gray, fontSize: 8 } },
+      });
+      y = doc.lastAutoTable.finalY + 6;
+
+      // --- WARNING ---
+      const warningEl = document.getElementById('warning');
+      if (warningEl.style.display !== 'none') {
+        roundRect(ml, y, contentW, 14, 3, [255, 243, 205]);
+        doc.setTextColor(133, 100, 4);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        const warnText = warningEl.textContent;
+        const lines = doc.splitTextToSize(warnText, contentW - 10);
+        const boxH = 8 + lines.length * 4;
+        roundRect(ml, y, contentW, boxH, 3, [255, 243, 205]);
+        doc.text(lines, ml + 5, y + 5);
+        y += boxH + 6;
+      }
+
+      // --- CUADRO DE AMORTIZACIÓN ---
+      doc.addPage();
+      y = 20;
+      roundRect(0, 0, W, 20, 0, navy);
+      doc.setTextColor(...white);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Cuadro de Amortización', ml, 14);
+      y = 28;
+
+      // Build amort data
+      const propUSD2 = parseFormatted(document.getElementById('propertyUSD').value);
+      const ltvPct2 = parseFloat(document.getElementById('ltvPct').value) / 100;
+      const salary2 = parseFormatted(document.getElementById('salary').value);
+      const tna2 = parseFloat(document.getElementById('tna').value) / 100;
+      const years2 = parseInt(document.getElementById('years').value);
+      const maxRatioPct2 = parseFloat(document.getElementById('maxRatio').value) / 100;
+      const n = years2 * 12;
+      const mRate = tna2 / 12;
+      const propARS2 = propUSD2 * tcBNA;
+      let credARS = propARS2 * ltvPct2;
+      const cuotaMaxPDF = salary2 * maxRatioPct2;
+      const factorPDF = (Math.pow(1 + mRate, n) - 1) / (mRate * Math.pow(1 + mRate, n));
+      const credMaxRatio = cuotaMaxPDF * factorPDF;
+      if (credMaxRatio < credARS) credARS = credMaxRatio;
+      const cuotaPDF = credARS * (mRate * Math.pow(1 + mRate, n)) / (Math.pow(1 + mRate, n) - 1);
+
+      const amortData = [];
+      let saldoPDF = credARS;
+      let totalIntPDF = 0, totalCapPDF = 0;
+      for (let i = 1; i <= n; i++) {
+        const intPDF = saldoPDF * mRate;
+        const capPDF = cuotaPDF - intPDF;
+        saldoPDF -= capPDF;
+        if (saldoPDF < 0) saldoPDF = 0;
+        totalIntPDF += intPDF;
+        totalCapPDF += capPDF;
+        amortData.push([
+          i.toString(),
+          `$ ${fmt(cuotaPDF)}`,
+          `$ ${fmt(capPDF)}`,
+          `$ ${fmt(intPDF)}`,
+          `$ ${fmt(saldoPDF)}`
+        ]);
+      }
+
+      doc.autoTable({
+        startY: y,
+        head: [['Mes', 'Cuota', 'Capital', 'Interés', 'Saldo']],
+        body: amortData,
+        theme: 'striped',
+        margin: { left: ml, right: mr },
+        headStyles: { fillColor: navy, textColor: white, fontStyle: 'bold', fontSize: 8, halign: 'right' },
+        bodyStyles: { fontSize: 7.5, textColor: darkText, halign: 'right' },
+        columnStyles: { 0: { halign: 'center', cellWidth: 14 } },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        didDrawPage: function(data) {
+          // Footer on each page
+          doc.setFontSize(7);
+          doc.setTextColor(...gray);
+          doc.text('Simulación estimativa - No constituye oferta de crédito', ml, H - 8);
+          doc.text(`Página ${doc.internal.getNumberOfPages()}`, W - mr, H - 8, { align: 'right' });
+        }
+      });
+
+      // Add footer to first page too
+      doc.setPage(1);
+      doc.setFontSize(7);
+      doc.setTextColor(...gray);
+      doc.text('Simulación estimativa - No constituye oferta de crédito', ml, H - 8);
+      doc.text('Página 1', W - mr, H - 8, { align: 'right' });
+
+      doc.save('simulacion-hipotecaria.pdf');
     }
 
     // Format inputs with thousand separators (dots)
