@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Crédito Hipotecario</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 16px;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      max-width: 560px;
+      width: 100%;
+      padding: 36px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+      color: #16213e;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 28px;
+    }
+    .tc-box {
+      background: #e8f4fd;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tc-box .label { font-size: 0.85rem; color: #555; }
+    .tc-box .value { font-size: 1.25rem; font-weight: 700; color: #0a3d62; }
+    .tc-box .date { font-size: 0.75rem; color: #999; width: 100%; }
+    .tc-box .error { color: #c0392b; font-size: 0.85rem; }
+    .tc-box button {
+      background: #0a3d62;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .tc-box button:hover { background: #0c4b7a; }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #333;
+    }
+    label span.hint {
+      font-weight: 400;
+      color: #999;
+      font-size: 0.8rem;
+    }
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: #0a3d62;
+    }
+    .input-group {
+      position: relative;
+    }
+    .input-group .prefix {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      font-weight: 600;
+    }
+    .input-group .suffix {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      font-weight: 600;
+    }
+    .input-group input.with-prefix { padding-left: 50px; }
+    .input-group input.with-prefix-usd { padding-left: 56px; }
+    .input-group input.with-suffix { padding-right: 40px; }
+
+    button.calc-btn {
+      width: 100%;
+      padding: 14px;
+      background: #0a3d62;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    button.calc-btn:hover { background: #0c4b7a; }
+
+    .results {
+      display: none;
+      margin-top: 28px;
+      border-top: 1px solid #eee;
+      padding-top: 24px;
+    }
+    .results h2 {
+      font-size: 1.15rem;
+      margin-bottom: 16px;
+      color: #16213e;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .result-card {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .result-card.highlight {
+      background: #0a3d62;
+      color: #fff;
+      grid-column: 1 / -1;
+    }
+    .result-card .r-label {
+      font-size: 0.78rem;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    .result-card.highlight .r-label { color: #b0d4f1; }
+    .result-card .r-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .result-card.highlight .r-value { font-size: 1.5rem; }
+    .result-card .r-sub {
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-top: 2px;
+    }
+    .result-card.highlight .r-sub { color: #8bbde0; }
+
+    .warning {
+      background: #fff3cd;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #856404;
+    }
+    .warning strong { color: #664d03; }
+
+    .amort-toggle {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .amort-toggle button {
+      background: none;
+      border: 1.5px solid #0a3d62;
+      color: #0a3d62;
+      border-radius: 8px;
+      padding: 8px 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .amort-toggle button:hover { background: #e8f4fd; }
+
+    .amort-table-wrapper {
+      display: none;
+      margin-top: 16px;
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid #eee;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    th {
+      background: #0a3d62;
+      color: #fff;
+      padding: 10px 8px;
+      text-align: right;
+      position: sticky;
+      top: 0;
+    }
+    th:first-child { text-align: center; }
+    td {
+      padding: 8px;
+      text-align: right;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    td:first-child { text-align: center; }
+    tr:hover td { background: #f8f9fa; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Calculadora Hipotecaria</h1>
+    <p class="subtitle">Simulador de crédito hipotecario en Argentina</p>
+
+    <div class="tc-box">
+      <div>
+        <div class="label">Tipo de cambio BNA (vendedor)</div>
+        <div class="value" id="tc-value">Cargando...</div>
+        <div class="date" id="tc-date"></div>
+      </div>
+      <button onclick="fetchTC()">Actualizar</button>
+    </div>
+
+    <div class="form-group">
+      <label>Valor de la propiedad <span class="hint">(en USD)</span></label>
+      <div class="input-group">
+        <span class="prefix">U$S</span>
+        <input type="text" id="propertyUSD" class="with-prefix-usd" placeholder="120.000" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Porcentaje que financia el banco <span class="hint">(% del valor)</span></label>
+      <div class="input-group">
+        <input type="number" id="ltvPct" class="with-suffix" placeholder="75" min="1" max="100" value="75">
+        <span class="suffix">%</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Sueldo neto mensual <span class="hint">(en ARS)</span></label>
+      <div class="input-group">
+        <span class="prefix">$</span>
+        <input type="text" id="salary" class="with-prefix" placeholder="2.000.000" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Tasa nominal anual (TNA) <span class="hint">(%)</span></label>
+      <div class="input-group">
+        <input type="number" id="tna" class="with-suffix" placeholder="5.5" step="0.1" value="5.5">
+        <span class="suffix">%</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Plazo del crédito <span class="hint">(en años)</span></label>
+      <div class="input-group">
+        <input type="number" id="years" class="with-suffix" placeholder="20" min="1" max="40" value="20">
+        <span class="suffix">años</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Máximo cuota/ingreso <span class="hint">(% del sueldo)</span></label>
+      <div class="input-group">
+        <input type="number" id="maxRatio" class="with-suffix" placeholder="25" min="1" max="100" value="25">
+        <span class="suffix">%</span>
+      </div>
+    </div>
+
+    <button class="calc-btn" onclick="calculate()">Calcular</button>
+
+    <div class="results" id="results">
+      <h2>Resultado</h2>
+      <div class="result-grid">
+        <div class="result-card highlight">
+          <div class="r-label">Cuota mensual estimada (sistema francés)</div>
+          <div class="r-value" id="r-cuota"></div>
+          <div class="r-sub" id="r-cuota-sub"></div>
+        </div>
+        <div class="result-card">
+          <div class="r-label">Monto del crédito</div>
+          <div class="r-value" id="r-credito"></div>
+          <div class="r-sub" id="r-credito-usd"></div>
+        </div>
+        <div class="result-card">
+          <div class="r-label">Anticipo necesario</div>
+          <div class="r-value" id="r-anticipo"></div>
+          <div class="r-sub" id="r-anticipo-usd"></div>
+        </div>
+        <div class="result-card">
+          <div class="r-label">Relación cuota/ingreso</div>
+          <div class="r-value" id="r-ratio"></div>
+          <div class="r-sub">Máximo recomendado: 25-30%</div>
+        </div>
+        <div class="result-card">
+          <div class="r-label">Total a pagar</div>
+          <div class="r-value" id="r-total"></div>
+          <div class="r-sub" id="r-intereses"></div>
+        </div>
+      </div>
+      <div class="warning" id="warning" style="display:none"></div>
+
+      <div class="amort-toggle">
+        <button onclick="toggleAmort()">Ver cuadro de amortización</button>
+      </div>
+      <div class="amort-table-wrapper" id="amort-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Mes</th>
+              <th>Cuota</th>
+              <th>Capital</th>
+              <th>Interés</th>
+              <th>Saldo</th>
+            </tr>
+          </thead>
+          <tbody id="amort-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let tcBNA = null;
+
+    const fmt = (n) => n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+    const fmtD = (n, d=2) => n.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+    async function fetchTC() {
+      const el = document.getElementById('tc-value');
+      const dateEl = document.getElementById('tc-date');
+      el.textContent = 'Cargando...';
+      try {
+        const res = await fetch('https://api.bluelytics.com.ar/v2/latest');
+        const data = await res.json();
+        tcBNA = data.oficial.value_sell;
+        el.textContent = `$ ${fmtD(tcBNA)}`;
+        dateEl.textContent = `Actualizado: ${new Date().toLocaleString('es-AR')}`;
+      } catch (e) {
+        // fallback: try BNA direct
+        try {
+          const res2 = await fetch('https://api.estadisticasbcra.com/usd_of', {
+            headers: { 'Authorization': 'BEARER eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9' }
+          });
+          const data2 = await res2.json();
+          tcBNA = data2[data2.length - 1].v;
+          el.textContent = `$ ${fmtD(tcBNA)}`;
+          dateEl.textContent = `Actualizado: ${new Date().toLocaleString('es-AR')}`;
+        } catch (e2) {
+          el.innerHTML = '<span class="error">No se pudo obtener. Ingresá manualmente:</span>';
+          dateEl.innerHTML = '<input type="number" id="tc-manual" placeholder="1150" style="width:120px;padding:4px 8px;border:1px solid #ccc;border-radius:4px;margin-top:4px;" onchange="tcBNA=parseFloat(this.value)">';
+        }
+      }
+    }
+
+    function calculate() {
+      if (!tcBNA) {
+        alert('Esperá a que se cargue el tipo de cambio o ingresalo manualmente.');
+        return;
+      }
+
+      const propUSD = parseFormatted(document.getElementById('propertyUSD').value);
+      const ltvPct = parseFloat(document.getElementById('ltvPct').value) / 100;
+      const salary = parseFormatted(document.getElementById('salary').value);
+      const tna = parseFloat(document.getElementById('tna').value) / 100;
+      const years = parseInt(document.getElementById('years').value);
+
+      if (!propUSD || !salary || !tna || !years) {
+        alert('Completá todos los campos.');
+        return;
+      }
+
+      const maxRatioPct = parseFloat(document.getElementById('maxRatio').value) / 100;
+      const n = years * 12;
+      const monthlyRate = tna / 12;
+
+      // Crédito solicitado por LTV
+      const propARS = propUSD * tcBNA;
+      let creditoARS = propARS * ltvPct;
+
+      // Cuota máxima permitida por ratio cuota/ingreso
+      const cuotaMax = salary * maxRatioPct;
+
+      // Crédito máximo que permite esa cuota (despejando de fórmula francesa)
+      const factor = (Math.pow(1 + monthlyRate, n) - 1) / (monthlyRate * Math.pow(1 + monthlyRate, n));
+      const creditoMaxByRatio = cuotaMax * factor;
+
+      // Topear: el menor entre lo que pide el LTV y lo que permite el ratio
+      let topeado = false;
+      if (creditoMaxByRatio < creditoARS) {
+        creditoARS = creditoMaxByRatio;
+        topeado = true;
+      }
+
+      const creditoUSD = creditoARS / tcBNA;
+      const anticipoARS = propARS - creditoARS;
+      const anticipoUSD = propUSD - creditoUSD;
+
+      // Sistema francés
+      const cuota = creditoARS * (monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1);
+      const totalPagar = cuota * n;
+      const totalIntereses = totalPagar - creditoARS;
+      const ratio = (cuota / salary) * 100;
+      const ltvReal = (creditoARS / propARS) * 100;
+
+      document.getElementById('r-cuota').textContent = `$ ${fmt(cuota)}`;
+      document.getElementById('r-cuota-sub').textContent = `≈ U$S ${fmt(cuota / tcBNA)} al TC actual`;
+      document.getElementById('r-credito').textContent = `$ ${fmt(creditoARS)}`;
+      document.getElementById('r-credito-usd').textContent = `U$S ${fmt(creditoUSD)}`;
+      document.getElementById('r-anticipo').textContent = `$ ${fmt(anticipoARS)}`;
+      document.getElementById('r-anticipo-usd').textContent = `U$S ${fmt(anticipoUSD)}`;
+      document.getElementById('r-ratio').textContent = `${fmtD(ratio, 1)}%`;
+      document.getElementById('r-total').textContent = `$ ${fmt(totalPagar)}`;
+      document.getElementById('r-intereses').textContent = `Intereses: $ ${fmt(totalIntereses)}`;
+
+      const warning = document.getElementById('warning');
+      if (topeado) {
+        warning.style.display = 'block';
+        warning.innerHTML = `<strong>Crédito topeado:</strong> Con tu sueldo y el tope de ${fmtD(maxRatioPct*100,0)}% cuota/ingreso, el banco te prestaría como máximo <strong>U$S ${fmt(creditoUSD)}</strong> (${fmtD(ltvReal,1)}% del valor de la propiedad en vez del ${fmtD(ltvPct*100,0)}% solicitado). Necesitás un anticipo mayor: <strong>U$S ${fmt(anticipoUSD)}</strong>.`;
+      } else {
+        warning.style.display = 'none';
+      }
+
+      // Amortization table
+      const tbody = document.getElementById('amort-body');
+      tbody.innerHTML = '';
+      let saldo = creditoARS;
+      for (let i = 1; i <= n; i++) {
+        const interes = saldo * monthlyRate;
+        const capital = cuota - interes;
+        saldo -= capital;
+        if (saldo < 0) saldo = 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i}</td><td>$ ${fmt(cuota)}</td><td>$ ${fmt(capital)}</td><td>$ ${fmt(interes)}</td><td>$ ${fmt(saldo)}</td>`;
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('amort-wrapper').style.display = 'none';
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function toggleAmort() {
+      const w = document.getElementById('amort-wrapper');
+      w.style.display = w.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Format inputs with thousand separators (dots)
+    function formatWithDots(value) {
+      const num = value.replace(/\D/g, '');
+      return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    function parseFormatted(value) {
+      return parseFloat(value.replace(/\./g, '')) || 0;
+    }
+    document.querySelectorAll('#propertyUSD, #salary').forEach(input => {
+      input.addEventListener('input', function() {
+        const pos = this.selectionStart;
+        const oldLen = this.value.length;
+        this.value = formatWithDots(this.value);
+        const newLen = this.value.length;
+        this.setSelectionRange(pos + (newLen - oldLen), pos + (newLen - oldLen));
+      });
+    });
+
+    // Auto-fetch TC on load
+    fetchTC();
+  </script>
+</body>
+</html>
