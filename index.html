@@ -321,8 +321,9 @@
       </div>
       <div class="warning" id="warning" style="display:none"></div>
 
-      <div class="amort-toggle">
+      <div class="amort-toggle" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
         <button onclick="toggleAmort()">Ver cuadro de amortización</button>
+        <button onclick="downloadPDF()">Descargar PDF</button>
       </div>
       <div class="amort-table-wrapper" id="amort-wrapper">
         <table>
@@ -341,6 +342,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
   <script>
     let tcBNA = null;
 
@@ -464,6 +466,26 @@
     function toggleAmort() {
       const w = document.getElementById('amort-wrapper');
       w.style.display = w.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function downloadPDF() {
+      // Show amort table for PDF
+      const amortW = document.getElementById('amort-wrapper');
+      const wasHidden = amortW.style.display === 'none';
+      amortW.style.display = 'block';
+
+      const el = document.getElementById('results');
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: 'simulacion-hipotecaria.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      html2pdf().set(opt).from(el).save().then(() => {
+        if (wasHidden) amortW.style.display = 'none';
+      });
     }
 
     // Format inputs with thousand separators (dots)
